@@ -19,7 +19,7 @@
   rotação; `render_frame`/`export_action`/`export_act_grid` pra render).
   Mapa de ações de monstro: 0-7 idle, 8-15 walk, 16-23 attack,
   24-31 flinch (6f), 32 die (5f), por direção. Spec de referência:
-  `_src/act_spec.md` (rdw-archive ACT.MD) + baphomet.act v2.1!? (kRO
+  `media/_src/act_spec.md` (gitignored) (rdw-archive ACT.MD) + baphomet.act v2.1!? (kRO
   Latam): stride fixo 72B/frame c/ 1 layer, bloco 8B unknown entre
   layers e soundId (o loader do GRF Editor omite), sensível a região
   fantasma de actions declaradas no header (parser lê parcial).
