@@ -164,5 +164,6 @@ If the embed posts but the image doesn't render, the link isn't a direct file li
 | 400 "emoji_id is not snowflake" on `-rolemenu post` | Command 8's post branch must send custom emojis as `name:id` (no `<>`). Fixed in [yagpdb-commands-8-14.md](yagpdb-commands-8-14.md); re-paste the post branch if the dashboard copy is old |
 | `-gif set` / `-image set` answers Usage with valid syntax | Old templates read `set` from CmdArgs[0], but the trigger already consumes `set|del`. Templates 11/13 were fixed (CmdArgs[0] = name); re-paste if the dashboard copy is old |
 | `-gif <nome>` / `-image <nome>` answers help | Old public triggers consumed the argument (`gif(\s+[^\s]+)?`); fixed to `gif(\s+|\z)` so CmdArgs carries the name. Re-paste triggers of commands 12/14 if the dashboard copy is old |
+| `-gif set` works but also gets a "No GIF/image found under `set`" extra reply | The public trigger matches `set` too (RE2 has no negative lookahead). Templates 12/14 silently ignore `set`/`del` in the final branch; re-paste if the dashboard copy is old |
 | GIF/image doesn't render | Link must be direct file link (section 4, item 2–4) |
 | Command "does nothing" for members | Role restrictions set to *Require* a role the user lacks (commands 3–5, 8, 11, 13) |

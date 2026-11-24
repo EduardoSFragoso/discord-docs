@@ -306,11 +306,15 @@ Trigger type: `Regex` — Trigger: `\A(-|<@!?204255221017214977>\s*)gif(\s+|\z)`
     {{ end }}
 {{ else }}
     {{ $name := lower (index .CmdArgs 0) }}
-    {{ with $store.Get $name }}
-        {{ $entry := sdict . }}
-        {{ sendMessage nil (cembed "image" (sdict "url" ($entry.Get "url")) "color" 14232643) }}
+    {{ if inFold (cslice "set" "del") $name }}
+        {{/* "gif set|del" is handled by the admin command — stay silent here */}}
     {{ else }}
-        No GIF found under `{{ $name }}`. Run `-gif` for help.
+        {{ with $store.Get $name }}
+            {{ $entry := sdict . }}
+            {{ sendMessage nil (cembed "image" (sdict "url" ($entry.Get "url")) "color" 14232643) }}
+        {{ else }}
+            No GIF found under `{{ $name }}`. Run `-gif` for help.
+        {{ end }}
     {{ end }}
 {{ end }}
 ```
@@ -398,11 +402,15 @@ Trigger type: `Regex` — Trigger: `\A(-|<@!?204255221017214977>\s*)(image|img|i
     {{ end }}
 {{ else }}
     {{ $name := lower (index .CmdArgs 0) }}
-    {{ with $store.Get $name }}
-        {{ $entry := sdict . }}
-        {{ sendMessage nil (cembed "image" (sdict "url" ($entry.Get "url")) "color" 14232643) }}
+    {{ if inFold (cslice "set" "del") $name }}
+        {{/* "image set|del" is handled by the admin command — stay silent here */}}
     {{ else }}
-        No image found under `{{ $name }}`. Run `-image` for help.
+        {{ with $store.Get $name }}
+            {{ $entry := sdict . }}
+            {{ sendMessage nil (cembed "image" (sdict "url" ($entry.Get "url")) "color" 14232643) }}
+        {{ else }}
+            No image found under `{{ $name }}`. Run `-image` for help.
+        {{ end }}
     {{ end }}
 {{ end }}
 ```
