@@ -88,10 +88,18 @@ def read_act(path):
                 else:
                     # v2.0-2.4: soundId + 8B unknown, ritmo fixo de 72B/frame
                     (sound_id,) = struct.unpack_from("<i", b, pos)
-                    pos += 4 + 8
-                    if version >= 2.3:
-                        (n_anchors,) = struct.unpack_from("<I", b, pos)
-                        pos += 4 + n_anchors * 16
+                    if version >= 2.4:
+                        # v2.4 (sprites de player do bRO/Latam): cauda FIXA de
+                        # 24B (soundId + 20B unknown/anchors). Nao le n_anchors
+                        # aqui - o valor do meio e lixo e desalinha. Confitado
+                        # no head act 2.4: parseia os 104 actions e sobra
+                        # exatamente o bloco de speeds (104*4+4) no fim.
+                        pos += 24
+                    else:
+                        pos += 4 + 8
+                        if version >= 2.3:
+                            (n_anchors,) = struct.unpack_from("<I", b, pos)
+                            pos += 4 + n_anchors * 16
                 frames.append({"layers": layers, "sound": sound_id})
             actions.append({"frames": frames})
     except (ValueError, struct.error):

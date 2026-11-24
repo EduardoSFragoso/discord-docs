@@ -5,7 +5,7 @@ Formato v1.2 (fonte de verdade: libgrf/sprite.c, OpenKore/neoncube):
   - u16 numero de imagens
   - 2 bytes nulos de padding
   - por imagem: u16 w, u16 h, u16 compressed_len, bytes RLE
-  - no fim: paleta 256x4 em ordem BGRA (ultimos 1024 bytes)
+  - no fim: paleta 256x4 (ultimos 1024 bytes)
 RLE (expansao): byte 0 -> proximo byte n = n pixels zero (transparente);
                 qualquer outro byte e literal.
 A stream expandida e w*h bytes de cima pra baixo; indice 0 da paleta
@@ -29,7 +29,12 @@ def load_pal(path):
 
 
 def _parse_palette(raw_pal):
-    return [tuple(reversed(raw_pal[i * 4: i * 4 + 3])) + (255,)
+    # Ordem dos canais confirmada empiricamente contra o cliente (oracle
+    # pal_oracle.png: novico sai bege/marrom como in-game; com R<->B sai
+    # um cavaleiro azul inexistente). Os 3 primeiros bytes de cada entrada
+    # sao R,G,B direto; o 4o e lixo. A "BGRA" da spec classica inverte
+    # R e B neste GRF.
+    return [tuple(raw_pal[i * 4: i * 4 + 3]) + (255,)
             for i in range(256)]
 
 
