@@ -175,32 +175,139 @@ def grf_decode(data, declen, ftype):
 class Grf:
     def __init__(self, path):
         self.f = open(path, "rb")
+        self.snapshots = []  # so no modo multi-snapshot
         h = self.f.read(0x2E)
         assert h[:15] == b"Master of Magic", "nao e GRF"
         self.version = struct.unpack_from("<I", h, 0x2A)[0]
         self.entry_count = struct.unpack_from("<I", h, 0x26)[0]
         self.f.seek(0x2E)
         rl, el = struct.unpack("<II", self.f.read(8))
-        table = zlib.decompress(self.f.read(rl))
+        try:
+            table = zlib.decompress(self.f.read(rl))
+        except zlib.error:
+            table = b""
         self.entries = {}  # nome unicode -> (srclen, saligned, declen, srcpos, ftype)
+        try:
+            self._parse_table(table)
+        except (struct.error, ValueError):
+            table = b""
+        if not self.entries:
+            # header nao padrao (GRFs repackados, ex. kRO Latam 2020): a tabela
+            # vem partida em varios snapshots zlib espalhados pelo arquivo.
+            # Uniao dos snapshots; na leitura tenta snapshot por snapshot.
+            print("tabela padrao invalida -> scan por snapshots da tabela...")
+            self.snapshots = []
+            for table in self._scan_tables():
+                try:
+                    snap = {}
+                    ofs = 0
+                    while ofs < len(table):
+                        end = table.index(0, ofs)
+                        fname = table[ofs:end].decode("cp949", "replace")
+                        ofs2 = end + 1
+                        srclen, saligned, declen = struct.unpack_from(
+                            "<III", table, ofs2)
+                        ftype = table[ofs2 + 12]
+                        srcpos, = struct.unpack_from("<I", table, ofs2 + 13)
+                        if ftype & FILE:
+                            snap[fname] = (srclen, saligned, declen,
+                                           srcpos + 0x2E, ftype)
+                        ofs = ofs2 + 17
+                    self.snapshots.append(snap)
+                except (struct.error, ValueError):
+                    pass
+            self.snapshots.sort(key=len)
+            for snap in self.snapshots:
+                self.entries.update(snap)
+            print(f"  scan: {len(self.snapshots)} snapshots, "
+                  f"uniao = {len(self.entries)} arquivos")
+        self._real_count = self.entry_count - 7
+
+    def _parse_table(self, table):
         ofs = 0
         while ofs < len(table):
             end = table.index(0, ofs)
             fname = table[ofs:end].decode("cp949", "replace")
             ofs2 = end + 1
-            srclen, saligned, declen, srcpos = struct.unpack_from("<IIII", table, ofs2)
+            srclen, saligned, declen = struct.unpack_from("<III", table, ofs2)
             ftype = table[ofs2 + 12]
+            srcpos, = struct.unpack_from("<I", table, ofs2 + 13)
             if ftype & FILE:
                 self.entries[fname] = (srclen, saligned, declen,
                                        srcpos + 0x2E, ftype)
             ofs = ofs2 + 17
-        self._real_count = self.entry_count - 7
+
+    def _scan_tables(self):
+        """Devolve a lista de tabelas (snapshots) zlib encontradas no arquivo
+        (GRFs em que o header foi reescrito e perde o offset da tabela)."""
+        CHUNK = 16 * 1024 * 1024
+        f = self.f
+        f.seek(0)
+        found = {}
+        prev_tail = b""
+        while True:
+            mark = f.tell()
+            buf = f.read(CHUNK)
+            if not buf:
+                break
+            data = prev_tail + buf
+            for magic in (b"\x78\x9c", b"\x78\xda", b"\x78\x01",
+                          b"\x78\x5e", b"\x78\x5d"):
+                i = data.find(magic)
+                while i != -1:
+                    try:
+                        d = zlib.decompressobj()
+                        pre = d.decompress(data[i:i + 4096])
+                        # pre-filtro: comeca com caminho "data\\" e tem varios
+                        if pre.startswith(b"data\\") and pre.count(b"data\\") > 32:
+                            d2 = zlib.decompressobj()
+                            out = d2.decompress(data[i:])
+                            while not d2.eof and len(out) < 64 * 1024 * 1024:
+                                nxt = f.read(CHUNK)
+                                if not nxt:
+                                    break
+                                out += d2.decompress(nxt)
+                            if len(out) > 100000:
+                                found[out[:256] + b"|" + str(len(out)).encode()] \
+                                    = out
+                    except Exception:
+                        pass
+                    f.seek(mark + len(buf))
+                    i = data.find(magic, i + 1)
+            f.seek(mark + len(buf))
+            prev_tail = buf[-0x1000:]
+        f.seek(0)
+        tables = list(found.values())
+        print(f"  scan: {len(tables)} snapshots distintos")
+        return tables
+
+    def _read_via_snapshots(self, name):
+        """Le tentando cada snapshot que tem o arquivo (GRF multi-snapshot)."""
+        f = self.f
+        for snap in reversed(self.snapshots):  # mais recente (maior) primeiro
+            info = snap.get(name)
+            if not info:
+                continue
+            srclen, saligned, declen, srcpos, ftype = info
+            try:
+                f.seek(srcpos)
+                data = f.read(saligned)
+                if ftype & (MIXED | HEADER):
+                    data = grf_decode(data, declen, ftype)
+                data = zlib.decompress(data[:srclen])
+                if len(data) == declen:
+                    return data
+            except (zlib.error, OSError):
+                continue
+        raise KeyError(f"nenhum snapshot serve o arquivo {name!r}")
 
     def list_prefix(self, prefix):
         prefix = prefix.replace("/", "\\").lower()
         return [n for n in self.entries if n.lower().startswith(prefix)]
 
     def read(self, name):
+        if self.snapshots:
+            return self._read_via_snapshots(name)
         srclen, saligned, declen, srcpos, ftype = self.entries[name]
         self.f.seek(srcpos)
         data = self.f.read(saligned)

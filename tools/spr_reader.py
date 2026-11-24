@@ -95,8 +95,9 @@ def decode_pal_image(w, h, data, palette, rle=True):
     return img
 
 
-def export_sprite_frame(path, out_png, scale=2):
-    spr = read_spr(path)
+def export_sprite_frame(path, out_png, scale=2, pal_path=None):
+    palette = load_pal(pal_path) if pal_path else None
+    spr = read_spr(path, palette)
     n = len(spr["images"])
     wmax = max(im.width for im in spr["images"])
     hmax = max(im.height for im in spr["images"])
@@ -115,5 +116,6 @@ def export_sprite_frame(path, out_png, scale=2):
 
 if __name__ == "__main__":
     import sys
-    n, w, h = export_sprite_frame(sys.argv[1], sys.argv[2])
+    n, w, h = export_sprite_frame(sys.argv[1], sys.argv[2],
+                                  pal_path=sys.argv[3] if len(sys.argv) > 3 else None)
     print(f"{n} imagens, maior {w}x{h}")
