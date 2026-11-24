@@ -1,4 +1,4 @@
-"""Leitor de sprites Ragnarok Online (.spr v1.2, paleta RLE) -> PNG.
+"""Leitor de sprites Ragnarok Online (.spr v1.2 e v2.0) -> PNG.
 
 Formato v1.2 (fonte de verdade: libgrf/sprite.c, OpenKore/neoncube):
   - magic "SP" 01 02
@@ -10,6 +10,14 @@ RLE (expansao): byte 0 -> proximo byte n = n pixels zero (transparente);
                 qualquer outro byte e literal.
 A stream expandida e w*h bytes de cima pra baixo; indice 0 da paleta
 fica transparente na exportacao.
+
+Formato v2.0 (revertido empiricamente; 64/65 flores do dump validam):
+  - magic "SP" 00 02
+  - igual v1.2, mas SEM RLE e SEM compressed_len: entrada e so
+    u16 w, u16 h, seguida de w*h bytes crus de indice de paleta.
+  - n_imagens == 0 e possivel (arquivo degenerado, ex. ef_snow.spr).
+  - SPR 2.1+ (RGBA zlib / TGA) nao existe neste GRF (varredura de
+    86.593 arquivos: 86528 v1.2, 65 v2.0) e ficou fora de escopo.
 """
 import struct
 from PIL import Image
@@ -17,23 +25,36 @@ from PIL import Image
 
 def read_spr(path):
     b = open(path, "rb").read()
-    assert b[:4] == b"SP\x01\x02", "formato nao suportado (esperado SPR 1.2)"
+    if b[:4] == b"SP\x01\x02":
+        rle = True
+    elif b[:4] == b"SP\x00\x02":
+        rle = False
+    else:
+        raise ValueError(
+            f"formato nao suportado: {b[:4]!r} (esperado SPR 1.2 ou 2.0)")
+
     n_images = struct.unpack_from("<H", b, 4)[0]
 
-    raw_pal = b[len(b) - 1024 :]
-    palette = [tuple(reversed(raw_pal[i * 4 : i * 4 + 3])) + (255,)
+    raw_pal = b[len(b) - 1024:]
+    palette = [tuple(reversed(raw_pal[i * 4: i * 4 + 3])) + (255,)
                for i in range(256)]
 
     images = []
     pos = 8
     for _ in range(n_images):
-        w, h, clen = struct.unpack_from("<HHH", b, pos)
-        data = b[pos + 6 : pos + 6 + clen]
-        pos += 6 + clen
+        if rle:
+            w, h, clen = struct.unpack_from("<HHH", b, pos)
+            data = b[pos + 6: pos + 6 + clen]
+            pos += 6 + clen
+        else:
+            w, h = struct.unpack_from("<HH", b, pos)
+            data = b[pos + 4: pos + 4 + w * h]
+            pos += 4 + w * h
         images.append((w, h, data))
 
     return {
-        "images": [decode_pal_image(w, h, data, palette) for w, h, data in images],
+        "images": [decode_pal_image(w, h, data, palette, rle)
+                   for w, h, data in images],
         "palette": palette,
     }
 
@@ -56,9 +77,9 @@ def rle_expand(data, n_pixels):
     return out
 
 
-def decode_pal_image(w, h, data, palette):
+def decode_pal_image(w, h, data, palette, rle=True):
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    flat = rle_expand(data, w * h)
+    flat = rle_expand(data, w * h) if rle else data
     img.putdata([
         (0, 0, 0, 0) if i == 0 else palette[i] for i in flat
     ])
