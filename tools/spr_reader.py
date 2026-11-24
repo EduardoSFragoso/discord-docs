@@ -23,7 +23,17 @@ import struct
 from PIL import Image
 
 
-def read_spr(path):
+def load_pal(path):
+    """Carrega uma paleta externa de 1024 bytes BGRA (data/palette do GRF)."""
+    return _parse_palette(open(path, "rb").read())
+
+
+def _parse_palette(raw_pal):
+    return [tuple(reversed(raw_pal[i * 4: i * 4 + 3])) + (255,)
+            for i in range(256)]
+
+
+def read_spr(path, palette=None):
     b = open(path, "rb").read()
     if b[:4] == b"SP\x01\x02":
         rle = True
@@ -36,8 +46,7 @@ def read_spr(path):
     n_images = struct.unpack_from("<H", b, 4)[0]
 
     raw_pal = b[len(b) - 1024:]
-    palette = [tuple(reversed(raw_pal[i * 4: i * 4 + 3])) + (255,)
-               for i in range(256)]
+    palette = _parse_palette(raw_pal) if palette is None else palette
 
     images = []
     pos = 8
