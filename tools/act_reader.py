@@ -19,6 +19,7 @@ Layout (v2.1 calibrada, 1 layer/frame = 72B cravados):
   >= 2.5: nao tem bloco extra (soundId logo apos as layers) + anchors:
           u32 nAnchors + nAnchors x (4B unknown, int x, int y, int attr)
   < 2.5: 8B de "unknown" entre layers e soundId
+          >= 2.4: cauda fixa de 24B = soundId + nAnchors + 1 anchor de 16B
   Depois das actions: >= 2.1: u32 nSounds + nomes de 40B;
                       >= 2.2: f32 speed por action.
 
@@ -84,23 +85,42 @@ def read_act(path):
                     (sound_id,) = struct.unpack_from("<i", b, pos)
                     pos += 4  # soundId (v >= 2.0)
                     (n_anchors,) = struct.unpack_from("<I", b, pos)
-                    pos += 4 + n_anchors * 16
+                    pos += 4
+                    anchors = []
+                    for _a in range(n_anchors):
+                        unk, ax, ay, attr = struct.unpack_from("<Iiii", b, pos)
+                        pos += 16
+                        anchors.append({"unknown": unk, "x": ax, "y": ay,
+                                        "attr": attr})
                 else:
+                    anchors = []
                     # v2.0-2.4: soundId + 8B unknown, ritmo fixo de 72B/frame
                     (sound_id,) = struct.unpack_from("<i", b, pos)
                     if version >= 2.4:
                         # v2.4 (sprites de player do bRO/Latam): cauda FIXA de
-                        # 24B (soundId + 20B unknown/anchors). Nao le n_anchors
-                        # aqui - o valor do meio e lixo e desalinha. Confitado
-                        # no head act 2.4: parseia os 104 actions e sobra
-                        # exatamente o bloco de speeds (104*4+4) no fim.
-                        pos += 24
+                        # 24B = soundId + nAnchors + 1 anchor de 16B. A ancora
+                        # "costura" cabeca/arma/escudo na ancora do frame do
+                        # CORPO (head_pos = anchor_corpo - anchor_cabeca +
+                        # xy_layer). Alguns atores têm lixo no nAnchors:
+                        # fallback pros 20B fixos.
+                        pos += 4
+                        (n_anc,) = struct.unpack_from("<I", b, pos)
+                        if n_anc == 1:
+                            pos += 4
+                            unk, ax, ay, attr = struct.unpack_from(
+                                "<Iiii", b, pos)
+                            pos += 16
+                            anchors.append({"unknown": unk, "x": ax, "y": ay,
+                                            "attr": attr})
+                        else:
+                            pos += 20
                     else:
                         pos += 4 + 8
                         if version >= 2.3:
                             (n_anchors,) = struct.unpack_from("<I", b, pos)
                             pos += 4 + n_anchors * 16
-                frames.append({"layers": layers, "sound": sound_id})
+                frames.append({"layers": layers, "sound": sound_id,
+                               "anchors": anchors})
             actions.append({"frames": frames})
     except (ValueError, struct.error):
         partial = True  # regiao fantasma atingida, mantemos as acoes validas
