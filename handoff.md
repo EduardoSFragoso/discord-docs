@@ -14,9 +14,17 @@
   por imagem w/h/compressed_len **u16**, RLE com byte-0 = contagem de
   zeros, paleta nos últimos 1024 bytes.
 - **Pendências do leitor**: suporte a `.spr` 2.1+ (imagens RGBA zlib e
-  TGA) e parser de `.act` (animações/estados). No `.act` v2.5+:
-  frames com index de sprite, offset e zoom — é o caminho pra montar
-  composições por estado (idle/atk/death) sem recorte manual.
+  TGA). O parser de `.act` existe e funciona: `_src/act_reader.py`
+  (v2.0-2.5, lê actions/frames/layers com offsets, mirror, escala e
+  rotação; `render_frame`/`export_action`/`export_act_grid` pra render).
+  Mapa de ações de monstro: 0-7 idle, 8-15 walk, 16-23 attack,
+  24-31 flinch (6f), 32 die (5f), por direção. Spec de referência:
+  `_src/act_spec.md` (rdw-archive ACT.MD) + baphomet.act v2.1!? (kRO
+  Latam): stride fixo 72B/frame c/ 1 layer, bloco 8B unknown entre
+  layers e soundId (o loader do GRF Editor omite), sensível a região
+  fantasma de actions declaradas no header (parser lê parcial).
+  O "arcebispo morto" não apareceu com nome latin no dump (procurar
+  NPC/QS ou sheets da web).
 - **Preview atual**: composição de `baphomet-up.png` feita com as
   sheets antigas; a imagem final aprovada está em `media/baphomet-up.png`
   e publicada (raw link no GitHub). Caso precise refazer usar os frames
