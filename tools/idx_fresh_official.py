@@ -1,3 +1,9 @@
+"""Regenera o indice oficial_fresh.json a partir do GRF oficial rebaixado.
+
+Registra como o official_fresh.json nasceu: idxa o GRF oficial limpo
+(Downloads/official_data.grf) com o leitor Grf atual. ONE-SHOT,
+referencia GRF hoje apagado -- so re-roda se voltar a baixa-lo.
+"""
 import sys
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 sys.path.insert(0, 'tools')

@@ -1,6 +1,9 @@
 """Rodada 2 do indice v2: para nomes ainda crus, repara o PREFIXO DE PASTAS
 via arvore de parent-paths conhecidos (componente a componente, sufixo de
 string). O nome do arquivo (ultimo segmento) nao se mexe.
+
+ONE-SHOT historico: referencia classic_decoded.grf (apagado).
+Produto final comitado: media/_src/grf_index/custom_v2.json.
 """
 import json
 import os

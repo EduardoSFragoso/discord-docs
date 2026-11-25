@@ -1,3 +1,13 @@
+"""Validacao cruzada (HISTORICA, one-shot) do official_fresh.json.
+
+Amostra 300 entradas aleatorias do indice, le o payload direto do GRF
+via grf_extract e compara (por conteudo decodificado) com os arquivos
+que o GRF Editor extraiu na pasta Downloads/sprite2/. Prova que o
+offset/srclen do indice le o mesmo byte que a extracao oficial.
+
+Pasta sprite2/ e GRF de Downloads ja apagados; so roda de novo se
+re-criar official_data.grf + sprite2/.
+"""
 import sys
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 sys.path.insert(0, 'tools')

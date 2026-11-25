@@ -1,5 +1,8 @@
 """Indice v2 do custom_decoded com nomes higienizados (v2 do algoritmo).
 
+ONE-SHOT historico: referencia Downloads/custom_decoded.grf (apagado).
+Produto final comitado: media/_src/grf_index/custom_v2.json.
+
 Cada parte do nome quebrado eh SUFIXO de string da parte real (o strip
 comeu bytes do comeco). Match: por nome de arquivo + sufixo
 componente-a-componente + juizo final por md5 de payload.
