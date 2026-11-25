@@ -215,7 +215,11 @@ class Grf:
                         if end == -1:
                             break
                         try:
-                            fname = table[ofs:end].decode("cp949", "replace")
+                            try:
+                                fname = table[ofs:end].decode("cp949")
+                            except UnicodeDecodeError:
+                                # bytes fora do cp949: latin-1 preserva 1:1
+                                fname = table[ofs:end].decode("latin-1")
                             srclen, saligned, declen = struct.unpack_from(
                                 "<III", table, end + 1)
                             ftype = table[end + 13]
@@ -252,7 +256,11 @@ class Grf:
             e = None
             fname = ""
             try:
-                fname = table[ofs:end].decode("cp949", "replace")
+                try:
+                    fname = table[ofs:end].decode("cp949")
+                except UnicodeDecodeError:
+                    # bytes fora do cp949: latin-1 preserva 1:1
+                    fname = table[ofs:end].decode("latin-1")
                 srclen, saligned, declen = struct.unpack_from(
                     "<III", table, end + 1)
                 ftype = table[end + 13]
