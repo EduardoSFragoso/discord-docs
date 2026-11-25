@@ -177,7 +177,15 @@ class Grf:
         self.f = open(path, "rb")
         self.snapshots = []  # so no modo multi-snapshot
         h = self.f.read(0x2E)
-        assert h[:15] == b"Master of Magic", "nao e GRF"
+        # servers costumam renomear o magic ("Event Horizon" etc.); o que
+        # importa e o layout (key/len1/len2/nome em offsets fixos)
+        if h[:15] != b"Master of Magic" and struct.unpack_from(
+                "<I", h, 0x2A)[0] not in (0x100, 0x101, 0x102, 0x103,
+                                          0x200, 0x201, 0x202, 0x203,
+                                          0x300):
+            raise AssertionError("nao e GRF (magic '%s', ver 0x%x)"
+                                 % (h[:15].decode('latin-1'),
+                                    struct.unpack_from("<I", h, 0x2A)[0]))
         self.version = struct.unpack_from("<I", h, 0x2A)[0]
         self.entry_count = struct.unpack_from("<I", h, 0x26)[0]
         self.f.seek(0x2E)
@@ -201,18 +209,29 @@ class Grf:
                 try:
                     snap = {}
                     ofs = 0
-                    while ofs < len(table):
-                        end = table.index(0, ofs)
-                        fname = table[ofs:end].decode("cp949", "replace")
-                        ofs2 = end + 1
-                        srclen, saligned, declen = struct.unpack_from(
-                            "<III", table, ofs2)
-                        ftype = table[ofs2 + 12]
-                        srcpos, = struct.unpack_from("<I", table, ofs2 + 13)
-                        if ftype & FILE:
-                            snap[fname] = (srclen, saligned, declen,
-                                           srcpos + 0x2E, ftype)
-                        ofs = ofs2 + 17
+                    n = len(table)
+                    while ofs < n - 17:
+                        end = table.find(b"\x00", ofs)
+                        if end == -1:
+                            break
+                        try:
+                            fname = table[ofs:end].decode("cp949", "replace")
+                            srclen, saligned, declen = struct.unpack_from(
+                                "<III", table, end + 1)
+                            ftype = table[end + 13]
+                            srcpos, = struct.unpack_from("<I", table, end + 14)
+                        except (struct.error, ValueError):
+                            break
+                        e = self._entry(fname, srclen, saligned, declen,
+                                        ftype, srcpos)
+                        if e is not None:
+                            snap[fname] = e
+                            ofs = end + 18
+                        else:
+                            nxt = table.find(b"data\\", ofs + 1)
+                            if nxt == -1:
+                                break
+                            ofs = nxt
                     self.snapshots.append(snap)
                 except (struct.error, ValueError):
                     pass
@@ -225,17 +244,44 @@ class Grf:
 
     def _parse_table(self, table):
         ofs = 0
-        while ofs < len(table):
-            end = table.index(0, ofs)
-            fname = table[ofs:end].decode("cp949", "replace")
-            ofs2 = end + 1
-            srclen, saligned, declen = struct.unpack_from("<III", table, ofs2)
-            ftype = table[ofs2 + 12]
-            srcpos, = struct.unpack_from("<I", table, ofs2 + 13)
-            if ftype & FILE:
-                self.entries[fname] = (srclen, saligned, declen,
-                                       srcpos + 0x2E, ftype)
-            ofs = ofs2 + 17
+        n = len(table)
+        while ofs < n - 17:
+            end = table.find(b"\x00", ofs)
+            if end == -1:
+                break
+            e = None
+            fname = ""
+            try:
+                fname = table[ofs:end].decode("cp949", "replace")
+                srclen, saligned, declen = struct.unpack_from(
+                    "<III", table, end + 1)
+                ftype = table[end + 13]
+                srcpos, = struct.unpack_from("<I", table, end + 14)
+                e = self._entry(fname, srclen, saligned, declen, ftype, srcpos)
+            except (struct.error, ValueError):
+                break
+            if e is not None:
+                self.entries[fname] = e
+                ofs = end + 18
+            else:
+                # registro partido (repacks/snapshots): resincroniza no proximo
+                # caminho conhecido
+                nxt = table.find(b"data\\", ofs + 1)
+                if nxt == -1:
+                    break
+                ofs = nxt
+
+    @staticmethod
+    def _entry(fname, srclen, saligned, declen, ftype, srcpos):
+        # registro sao 17 bytes APOS o nome; saligned absurdos ou negativos
+        # indicam registro partido
+        if srclen < 0 or saligned < 0 or declen < 0 or srcpos < 0:
+            return None
+        if saligned > srclen + 7 or declen > 2_000_000_000:
+            return None
+        if not (ftype & FILE):
+            return None
+        return (srclen, saligned, declen, srcpos + 0x2E, ftype)
 
     def _scan_tables(self):
         """Devolve a lista de tabelas (snapshots) zlib encontradas no arquivo
