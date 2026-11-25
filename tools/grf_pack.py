@@ -159,11 +159,15 @@ def main():
         # header[0:15] = HEADER_MODE cresceria o bytearray (slice-assign
         # redimensiona!) e empurraria a tabela 19B alem do 0x36
         header[0:15] = HEADER_MODE[:15]
-        struct.pack_into("<I", header, 0x14, len(comp))   # len1 (tabela)
-        struct.pack_into("<I", header, 0x18, len(raw))    # len2 (tabela raw)
-        header[0x1C:0x26] = b"grf_merged"                 # nome 14B
-        struct.pack_into("<I", header, 0x26, n + 7)       # count (valor+7)
-        struct.pack_into("<I", header, 0x2A, 0x200)       # versao
+        # fill 00,01,..,0E @0x0F-0x1D: constante em todo GRF real kRO
+        header[0x0F:0x1E] = bytes(range(0x0F))
+        # offset da tabela RELATIVO a 0x2E (spec do zgrf/GRF Editor):
+        # leitor faz seek(u32@0x1E + 0x2E) e la encontra [clen][ulen]+zlib.
+        # Nossa tabela usa os lens de 0x2E -> relativo = 0.
+        struct.pack_into("<I", header, 0x1E, 0)
+        struct.pack_into("<I", header, 0x22, 0)      # seed (filecount = raw - seed - 7)
+        struct.pack_into("<I", header, 0x26, n + 7)  # count (valor+7)
+        struct.pack_into("<I", header, 0x2A, 0x200)  # versao
         struct.pack_into("<II", header, 0x2E, len(comp), len(raw))
         out.write(bytes(header))
         out.write(comp)
