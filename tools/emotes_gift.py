@@ -19,12 +19,12 @@ from PIL import Image
 
 sys.stdout.reconfigure(encoding="utf-8")
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "..", "..", "tools"))
+sys.path.insert(0, HERE)
 from act_reader import read_act          # noqa: E402
 from spr_reader import read_spr          # noqa: E402
 
-SRC = os.path.join(HERE, "emotes")
-OUT = os.path.normpath(os.path.join(HERE, "..", "emotes"))
+SRC = os.path.normpath(os.path.join(HERE, "..", "media", "_src", "emotes"))
+OUT = os.path.normpath(os.path.join(HERE, "..", "media", "emotes"))
 os.makedirs(OUT, exist_ok=True)
 
 

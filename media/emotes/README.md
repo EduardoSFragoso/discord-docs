@@ -29,7 +29,7 @@ nenhum GRF pra regenerar).
 ## Regenerar
 
 ```
-python media/_src/emotes_gift.py
+python tools/emotes_gift.py
 ```
 
 (requere só Pillow + numpy; lê os .spr/.act extraídos em
