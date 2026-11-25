@@ -1,8 +1,9 @@
 # Emoticons do kRO → GIF (lossless)
 
 Fonte: `data\sprite\이팩트\emotion.spr` + `emotion.act` (kRO 2022,
-extraídos de `G:\Ragnarok\data.grf` — fonte viva, não precisa guardar
-nenhum GRF pra regenerar).
+extraídos de `G:\Ragnarok\data.grf` — caminho EXCLUSIVO da máquina
+original; em outro ambiente, use o emotion.spr/.act de qualquer
+data.grf/kRO — este conjunto de emotes é conteúdo oficial do cliente).
 
 ## Arquivos
 
@@ -32,6 +33,6 @@ nenhum GRF pra regenerar).
 python tools/emotes_gift.py
 ```
 
-(requere só Pillow + numpy; lê os .spr/.act extraídos em
-`media/_src/emotes/`, que podem ser re-extraídos do GRF do G: havendo
-atualização do jogo)
+(requere só Pillow + numpy; lê os .spr/.act de
+`media/_src/emotes/` — pasta gitignored: re-extraia do seu
+data.grf/kRO antes de rodar)

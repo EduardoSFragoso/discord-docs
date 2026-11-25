@@ -45,5 +45,9 @@ só rodam de novo se você recriar os GRFs/pastas de referência.
 - **Nomes de arquivo GRF** são bytes cp949 (coreano). Mojibake em tela:
   GRF Editor → Settings → Display encoding → Korean (949). Em código,
   `nome.encode('cp1252').decode('euc-kr')` volta do mojibake.
-- **Dados extraídos vivem no GRF-fonte vivo** `G:\Ragnarok\data.grf`
-  (Event Horizon custom): nada extraído precisa de backup — reextrair.
+- **Dados extraídos: fonte re-extratável, mas SÓ nesta máquina.** No
+  ambiente original, os `.spr/.pal` extraídos e os GRFs decodificados
+  podiam ser apagados porque o GRF-fonte vivo `G:\Ragnarok\data.grf`
+  (Event Horizon custom, 4.5 GB) cobre tudo. **Em outra máquina/clon**
+  esse caminho não existe: o que sobra de re-extrair os dados originais
+  são os índices commitados e os GRFs na nuvem pessoal do dono do repo.
